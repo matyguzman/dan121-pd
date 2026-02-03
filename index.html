@@ -66,10 +66,6 @@ button.calc {
   white-space: pre-line;
   font-size: 14px;
 }
-.warn {
-  color: #b00020;
-  font-weight: 600;
-}
 details {
   background: #f7f9fb;
   padding: 12px;
@@ -79,9 +75,7 @@ details summary {
   font-weight: 700;
   cursor: pointer;
 }
-small {
-  color: #555;
-}
+small { color:#555; }
 </style>
 </head>
 
@@ -99,37 +93,25 @@ small {
 
 <div class="container">
 
-<!-- DAN INFO -->
 <div class="card">
 <details>
-<summary>📘 DAN 121.605 (consulta permanente)</summary>
+<summary>📘 DAN 121.605 – Consulta permanente</summary>
 <p>
-<strong>Norma:</strong> DAN 121 – Operación de Aeronaves<br>
-<strong>Numeral:</strong> 121.605<br>
-<strong>Edición:</strong> ED 3<br>
-<strong>Enmienda:</strong> ENM 7<br>
-<strong>Fecha:</strong> 02 de abril de 2025
+Norma: DAN 121 – Operación de Aeronaves<br>
+Numeral: 121.605<br>
+Edición: ED 3<br>
+Enmienda: ENM 7<br>
+Fecha: 02 abril 2025
 </p>
 <p>
-Esta aplicación se basa <strong>exclusivamente</strong> en los numerales
-<b>121.605(b)</b> y <b>121.605(c)</b>, según el documento oficial DGAC
-adjuntado por el usuario.
-</p>
-<p>
-Cuando la norma <strong>no define explícitamente</strong> un caso,
-la aplicación lo indica expresamente y <strong>no infiere reglas</strong>.
+Esta aplicación se basa exclusivamente en los numerales
+<b>121.605(b)</b> y <b>121.605(c)</b>.
 </p>
 </details>
 </div>
 
 <!-- VUELO -->
 <div id="vuelo" class="card">
-<label>Formato horario</label>
-<select id="tzV">
-  <option value="local">Hora Local</option>
-  <option value="utc">UTC</option>
-</select>
-
 <label>Inicio PSV</label>
 <input type="datetime-local" id="startV">
 
@@ -148,12 +130,6 @@ la aplicación lo indica expresamente y <strong>no infiere reglas</strong>.
 
 <!-- CABINA -->
 <div id="cabina" class="card" style="display:none">
-<label>Formato horario</label>
-<select id="tzC">
-  <option value="local">Hora Local</option>
-  <option value="utc">UTC</option>
-</select>
-
 <label>Inicio PSV</label>
 <input type="datetime-local" id="startC">
 
@@ -173,58 +149,93 @@ la aplicación lo indica expresamente y <strong>no infiere reglas</strong>.
 </div>
 
 <script>
-function switchView(v) {
-  document.getElementById("vuelo").style.display = v==="vuelo"?"block":"none";
-  document.getElementById("cabina").style.display = v==="cabina"?"block":"none";
-  document.getElementById("btnVuelo").classList.toggle("active", v==="vuelo");
-  document.getElementById("btnCabina").classList.toggle("active", v==="cabina");
+function switchView(v){
+  vuelo.style.display = v==="vuelo"?"block":"none";
+  cabina.style.display = v==="cabina"?"block":"none";
+  btnVuelo.classList.toggle("active",v==="vuelo");
+  btnCabina.classList.toggle("active",v==="cabina");
 }
 
-function hours(a,b){ return (b-a)/3600000; }
+function horas(a,b){ return (b-a)/3600000; }
 
+// ====================
+// TRIPULACIÓN DE VUELO
+// ====================
 function calcVuelo(){
   const s=new Date(startV.value), e=new Date(endV.value);
-  if(!s||!e||e<=s){ resV.textContent="❌ Fechas inválidas."; return;}
-  let psv=hours(s,e), pd;
-  if(psv<8){
-    resV.textContent=
-`⚠️ Caso no definido por DAN 121
+  if(!s||!e||e<=s){ resV.textContent="❌ Fechas inválidas."; return; }
 
-PSV < 8 h para Tripulación de Vuelo.
+  const psv=horas(s,e);
+  const PD_MIN=10;
+  let pd, texto="", citas=[];
 
-Referencia:
-DAN 121.605(b)(2)`;
-    return;
-  }
-  pd=11;
-  if(lonV.value==="si") pd+=2;
-  resV.textContent=
-`PSV: ${psv.toFixed(2)} h
-PD mínimo: ${pd.toFixed(2)} h
+  if(psv<7){
+    pd=PD_MIN;
+    const nextStart=new Date(e.getTime()+pd*3600000);
+    const maxNextPSV=8;
+
+    texto+=
+`PSV actual: ${psv.toFixed(2)} h
+PD aplicado: ${pd} h (mínimo)
+
+🕒 Próximo PSV puede iniciar:
+${nextStart.toLocaleString()}
+
+⏱️ Duración máxima del próximo PSV:
+${maxNextPSV} h
 
 Normativa aplicada:
-• DAN 121.605(b)(2)(iii)
-• DAN 121.605(b)(2)(iv)`;
-}
-
-function calcCabina(){
-  const s=new Date(startC.value), e=new Date(endC.value);
-  if(!s||!e||e<=s){ resC.textContent="❌ Fechas inválidas."; return;}
-  let psv=hours(s,e), pd=null;
-  const tabla=[[7,10],[8,11],[9,12],[10,13],[11,14],[12,15],[13,16],[14,17],[15,18],[16,19],[17,20],[18,21],[19,22],[20,24]];
-  for(let r of tabla){ if(psv<=r[0]){pd=r[1];break;} }
-  if(pd===null){
-    resC.textContent=
-`⚠️ PSV fuera de tabla cabina
-
-Referencia:
-DAN 121.605(c)(2)(i)`;
+• DAN 121.605(b)
+• DAN 121.605(b)(2)(v)
+`;
+    resV.textContent=texto;
     return;
   }
+
+  if(psv<8){
+    pd=PD_MIN;
+    citas.push("DAN 121.605(b) – Período de Descanso mínimo");
+  } else {
+    pd=11;
+    citas.push("DAN 121.605(b)(2)(iii) – PSV 8 h → PD 11 h");
+  }
+
+  if(lonV.value==="si"){
+    pd+=2;
+    citas.push("DAN 121.605(b)(2)(iv) – Ajuste por longitud");
+  }
+
+  resV.textContent=
+`PSV: ${psv.toFixed(2)} h
+PD aplicable: ${pd} h
+
+Normativa aplicada:
+• ${citas.join("\n• ")}`;
+}
+
+// =====================
+// TRIPULACIÓN DE CABINA
+// =====================
+function calcCabina(){
+  const s=new Date(startC.value), e=new Date(endC.value);
+  if(!s||!e||e<=s){ resC.textContent="❌ Fechas inválidas."; return; }
+
+  const psv=horas(s,e);
+  const tabla=[[7,10],[8,11],[9,12],[10,13],[11,14],[12,15],[13,16],[14,17],[15,18],[16,19],[17,20],[18,21],[19,22],[20,24]];
+  let pd=null;
+
+  for(const r of tabla){ if(psv<=r[0]){ pd=r[1]; break; } }
+
+  if(pd===null){
+    resC.textContent="⚠️ PSV fuera de tabla cabina\nDAN 121.605(c)(2)(i)";
+    return;
+  }
+
   if(lonC.value==="si") pd+=2;
+
   resC.textContent=
 `PSV: ${psv.toFixed(2)} h
-PD mínimo: ${pd.toFixed(2)} h
+PD aplicable: ${pd} h
 
 Normativa aplicada:
 • DAN 121.605(c)(2)(i)
