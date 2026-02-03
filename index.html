@@ -2,98 +2,234 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Calculadora PD – DAN 121</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PD – DAN 121.605</title>
+
 <style>
-body { font-family: Arial; max-width: 600px; margin: auto; }
-label { display: block; margin-top: 10px; }
-button { margin-top: 15px; }
-.result { margin-top: 20px; padding: 10px; background: #f2f2f2; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #eef1f4;
+  margin: 0;
+}
+header {
+  background: #0b2d48;
+  color: white;
+  padding: 16px;
+  text-align: center;
+}
+nav {
+  display: flex;
+}
+nav button {
+  flex: 1;
+  padding: 14px;
+  border: none;
+  background: #d0d6dc;
+  font-weight: 600;
+}
+nav button.active {
+  background: #ffffff;
+}
+.container {
+  padding: 16px;
+}
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+label {
+  font-weight: 600;
+  margin-top: 12px;
+  display: block;
+}
+input, select {
+  width: 100%;
+  padding: 10px;
+  margin-top: 4px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+button.calc {
+  background: #0b2d48;
+  color: white;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  width: 100%;
+  font-size: 16px;
+  margin-top: 16px;
+}
+.result {
+  white-space: pre-line;
+  font-size: 14px;
+}
+.warn {
+  color: #b00020;
+  font-weight: 600;
+}
+details {
+  background: #f7f9fb;
+  padding: 12px;
+  border-radius: 10px;
+}
+details summary {
+  font-weight: 700;
+  cursor: pointer;
+}
+small {
+  color: #555;
+}
 </style>
 </head>
+
 <body>
 
-<h2>Período de Descanso – DAN 121</h2>
+<header>
+  <h2>Período de Descanso</h2>
+  <small>DAN 121.605 · ED 3 · Enmienda 7 · 02 ABR 2025</small>
+</header>
 
-<label>Tipo de tripulación:
-<select id="tipo">
-<option value="vuelo">Tripulación de Vuelo</option>
-<option value="cabina">Tripulación de Cabina</option>
+<nav>
+  <button id="btnVuelo" class="active" onclick="switchView('vuelo')">Tripulación de Vuelo</button>
+  <button id="btnCabina" onclick="switchView('cabina')">Tripulación de Cabina</button>
+</nav>
+
+<div class="container">
+
+<!-- DAN INFO -->
+<div class="card">
+<details>
+<summary>📘 DAN 121.605 (consulta permanente)</summary>
+<p>
+<strong>Norma:</strong> DAN 121 – Operación de Aeronaves<br>
+<strong>Numeral:</strong> 121.605<br>
+<strong>Edición:</strong> ED 3<br>
+<strong>Enmienda:</strong> ENM 7<br>
+<strong>Fecha:</strong> 02 de abril de 2025
+</p>
+<p>
+Esta aplicación se basa <strong>exclusivamente</strong> en los numerales
+<b>121.605(b)</b> y <b>121.605(c)</b>, según el documento oficial DGAC
+adjuntado por el usuario.
+</p>
+<p>
+Cuando la norma <strong>no define explícitamente</strong> un caso,
+la aplicación lo indica expresamente y <strong>no infiere reglas</strong>.
+</p>
+</details>
+</div>
+
+<!-- VUELO -->
+<div id="vuelo" class="card">
+<label>Formato horario</label>
+<select id="tzV">
+  <option value="local">Hora Local</option>
+  <option value="utc">UTC</option>
 </select>
-</label>
 
-<label>Inicio PSV:
-<input type="datetime-local" id="inicio">
-</label>
+<label>Inicio PSV</label>
+<input type="datetime-local" id="startV">
 
-<label>Término PSV:
-<input type="datetime-local" id="fin">
-</label>
+<label>Término PSV</label>
+<input type="datetime-local" id="endV">
 
-<label>Cambio de longitud ≥ 45°:
-<input type="checkbox" id="long45">
-</label>
+<label>¿Cambio ≥ 45° longitud?</label>
+<select id="lonV">
+  <option value="no">No</option>
+  <option value="si">Sí</option>
+</select>
 
-<label>Grados adicionales:
-<input type="number" id="grados" value="0">
-</label>
+<button class="calc" onclick="calcVuelo()">Calcular PD</button>
+<div class="result" id="resV"></div>
+</div>
 
-<label id="trasladoBox" style="display:none;">
-Base principal:
-<input type="checkbox" id="base">
-</label>
+<!-- CABINA -->
+<div id="cabina" class="card" style="display:none">
+<label>Formato horario</label>
+<select id="tzC">
+  <option value="local">Hora Local</option>
+  <option value="utc">UTC</option>
+</select>
 
-<button onclick="calcular()">Calcular</button>
+<label>Inicio PSV</label>
+<input type="datetime-local" id="startC">
 
-<div class="result" id="resultado"></div>
+<label>Término PSV</label>
+<input type="datetime-local" id="endC">
+
+<label>¿Cambio ≥ 45° longitud?</label>
+<select id="lonC">
+  <option value="no">No</option>
+  <option value="si">Sí</option>
+</select>
+
+<button class="calc" onclick="calcCabina()">Calcular PD</button>
+<div class="result" id="resC"></div>
+</div>
+
+</div>
 
 <script>
-function calcular() {
-  const tipo = tipoElem.value;
-  const inicio = new Date(inicioElem.value);
-  const fin = new Date(finElem.value);
-  let psv = (fin - inicio) / 3600000;
-
-  let pd = 0;
-
-  if (tipo === "cabina") {
-    const tabla = [
-      [7,10],[8,11],[9,12],[10,13],[11,14],[12,15],[13,16],
-      [14,17],[15,18],[16,19],[17,20],[18,21],[19,22],[20,24]
-    ];
-    for (let t of tabla) {
-      if (psv <= t[0]) { pd = t[1]; break; }
-    }
-  } else {
-    if (psv >= 8) pd = 11;
-  }
-
-  if (long45Elem.checked) {
-    pd += 2 + Math.floor(gradosElem.value / 15) * 0.5;
-  }
-
-  if (tipo === "cabina" && pd === 10) {
-    pd += baseElem.checked ? 0.75 : 0.33;
-  }
-
-  const proximo = new Date(fin.getTime() + pd * 3600000);
-
-  resultado.innerHTML =
-    `PSV: ${psv.toFixed(2)} h<br>
-     PD mínimo: ${pd.toFixed(2)} h<br>
-     Próximo PSV permitido: ${proximo.toLocaleString()}`;
+function switchView(v) {
+  document.getElementById("vuelo").style.display = v==="vuelo"?"block":"none";
+  document.getElementById("cabina").style.display = v==="cabina"?"block":"none";
+  document.getElementById("btnVuelo").classList.toggle("active", v==="vuelo");
+  document.getElementById("btnCabina").classList.toggle("active", v==="cabina");
 }
 
-const tipoElem = document.getElementById("tipo");
-const inicioElem = document.getElementById("inicio");
-const finElem = document.getElementById("fin");
-const long45Elem = document.getElementById("long45");
-const gradosElem = document.getElementById("grados");
-const baseElem = document.getElementById("base");
-const trasladoBox = document.getElementById("trasladoBox");
-const resultado = document.getElementById("resultado");
+function hours(a,b){ return (b-a)/3600000; }
 
-tipoElem.onchange = () => trasladoBox.style.display =
-  tipoElem.value === "cabina" ? "block" : "none";
+function calcVuelo(){
+  const s=new Date(startV.value), e=new Date(endV.value);
+  if(!s||!e||e<=s){ resV.textContent="❌ Fechas inválidas."; return;}
+  let psv=hours(s,e), pd;
+  if(psv<8){
+    resV.textContent=
+`⚠️ Caso no definido por DAN 121
+
+PSV < 8 h para Tripulación de Vuelo.
+
+Referencia:
+DAN 121.605(b)(2)`;
+    return;
+  }
+  pd=11;
+  if(lonV.value==="si") pd+=2;
+  resV.textContent=
+`PSV: ${psv.toFixed(2)} h
+PD mínimo: ${pd.toFixed(2)} h
+
+Normativa aplicada:
+• DAN 121.605(b)(2)(iii)
+• DAN 121.605(b)(2)(iv)`;
+}
+
+function calcCabina(){
+  const s=new Date(startC.value), e=new Date(endC.value);
+  if(!s||!e||e<=s){ resC.textContent="❌ Fechas inválidas."; return;}
+  let psv=hours(s,e), pd=null;
+  const tabla=[[7,10],[8,11],[9,12],[10,13],[11,14],[12,15],[13,16],[14,17],[15,18],[16,19],[17,20],[18,21],[19,22],[20,24]];
+  for(let r of tabla){ if(psv<=r[0]){pd=r[1];break;} }
+  if(pd===null){
+    resC.textContent=
+`⚠️ PSV fuera de tabla cabina
+
+Referencia:
+DAN 121.605(c)(2)(i)`;
+    return;
+  }
+  if(lonC.value==="si") pd+=2;
+  resC.textContent=
+`PSV: ${psv.toFixed(2)} h
+PD mínimo: ${pd.toFixed(2)} h
+
+Normativa aplicada:
+• DAN 121.605(c)(2)(i)
+• DAN 121.605(c)(2)(iv)`;
+}
 </script>
 
 </body>
