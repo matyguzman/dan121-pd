@@ -6,84 +6,40 @@
 <title>PD – DAN 121.605</title>
 
 <style>
-body {
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #eef1f4;
-  margin: 0;
-}
-header {
-  background: #0b2d48;
-  color: white;
-  padding: 16px;
-  text-align: center;
-}
-nav {
-  display: flex;
-}
-nav button {
-  flex: 1;
-  padding: 14px;
-  border: none;
-  background: #d0d6dc;
-  font-weight: 600;
-}
-nav button.active {
-  background: #ffffff;
-}
-.container {
-  padding: 16px;
-}
-.card {
-  background: white;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 16px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-}
-label {
-  font-weight: 600;
-  margin-top: 12px;
-  display: block;
-}
-input, select {
-  width: 100%;
-  padding: 10px;
-  margin-top: 4px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-}
-button.calc {
-  background: #0b2d48;
-  color: white;
-  padding: 14px;
-  border: none;
-  border-radius: 10px;
-  width: 100%;
-  font-size: 16px;
-  margin-top: 16px;
-}
-.result {
-  white-space: pre-line;
-  font-size: 14px;
-}
-details {
-  background: #f7f9fb;
-  padding: 12px;
-  border-radius: 10px;
-}
-details summary {
-  font-weight: 700;
-  cursor: pointer;
-}
-small { color:#555; }
+body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #eef1f4; margin: 0; }
+header { background: #0b2d48; color: white; padding: 16px; text-align: center; }
+nav { display: flex; }
+nav button { flex: 1; padding: 14px; border: none; background: #d0d6dc; font-weight: 600; }
+nav button.active { background: #ffffff; }
+.container { padding: 16px; }
+.card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+label { font-weight: 600; margin-top: 12px; display: block; }
+input, select { width: 100%; padding: 10px; margin-top: 4px; border-radius: 8px; border: 1px solid #ccc; }
+button.calc { background: #0b2d48; color: white; padding: 14px; border: none; border-radius: 10px; width: 100%; font-size: 16px; margin-top: 16px; cursor: pointer; }
+.result { white-space: pre-line; font-size: 14px; margin-top: 16px; padding: 12px; border-radius: 8px; }
+.success { background: #e6ffe6; border: 1px solid #28a745; }
+.warning { background: #fff3cd; border: 1px solid #ffc107; }
+.danger { background: #ffe6e6; border: 1px solid #dc3545; }
+details { background: #f7f9fb; padding: 12px; border-radius: 10px; margin-bottom: 16px; }
+details summary { font-weight: 700; cursor: pointer; }
+
+/* Modal Normativa */
+#normativaBtn { position: fixed; bottom: 30px; right: 30px; background: #0b2d48; color: white; border: none; border-radius: 50%; width: 70px; height: 70px; font-size: 13px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 1000; }
+.modal { display: none; position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); overflow: auto; }
+.modal-content { background: white; margin: 5% auto; padding: 25px; width: 85%; max-width: 900px; border-radius: 12px; max-height: 85vh; overflow-y: auto; }
+.close { color: #aaa; float: right; font-size: 36px; font-weight: bold; cursor: pointer; }
+.close:hover { color: #000; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+th { background: #f2f2f2; }
 </style>
 </head>
 
 <body>
 
 <header>
-  <h2>Período de Descanso</h2>
-  <small>DAN 121.605 · ED 3 · Enmienda 7 · 02 ABR 2025</small>
+  <h2>Período de Descanso – DAN 121.605</h2>
+  <small>ED 3 · ENM 7 · 02 ABR 2025 (versión corregida y validada)</small>
 </header>
 
 <nav>
@@ -96,27 +52,27 @@ small { color:#555; }
 <div class="card">
 <details>
 <summary>📘 DAN 121.605 – Consulta permanente</summary>
-<p>
-Norma: DAN 121 – Operación de Aeronaves<br>
+<p>Norma: DAN 121 – Operación de Aeronaves<br>
 Numeral: 121.605<br>
-Edición: ED 3<br>
-Enmienda: ENM 7<br>
-Fecha: 02 abril 2025
-</p>
-<p>
-Esta aplicación se basa exclusivamente en los numerales
-<b>121.605(b)</b> y <b>121.605(c)</b>.
-</p>
+Edición: ED 3 / ENM 7 (02 ABR 2025)<br>
+Esta app valida PD según tablas oficiales (b) vuelo y (c) cabina, con ajustes por longitud y traslados. Incluye validación básica de PSV máximo.</p>
 </details>
 </div>
 
 <!-- VUELO -->
 <div id="vuelo" class="card">
+<label>Tipo de Tripulación</label>
+<select id="tipoVuelo">
+  <option value="2">2 Pilotos</option>
+  <option value="3">3 Pilotos</option>
+  <option value="4">4 Pilotos</option>
+</select>
+
 <label>Inicio PSV</label>
-<input type="datetime-local" id="startV">
+<input type="datetime-local" id="startV" required>
 
 <label>Término PSV</label>
-<input type="datetime-local" id="endV">
+<input type="datetime-local" id="endV" required>
 
 <label>¿Cambio ≥ 45° longitud?</label>
 <select id="lonV">
@@ -124,17 +80,23 @@ Esta aplicación se basa exclusivamente en los numerales
   <option value="si">Sí</option>
 </select>
 
-<button class="calc" onclick="calcVuelo()">Calcular PD</button>
+<button class="calc" onclick="calcVuelo()">Calcular PD y Validar</button>
 <div class="result" id="resV"></div>
 </div>
 
 <!-- CABINA -->
 <div id="cabina" class="card" style="display:none">
+<label>Tipo de Tripulación</label>
+<select id="tipoCabina">
+  <option value="min">Mínima</option>
+  <option value="ref">Reforzada</option>
+</select>
+
 <label>Inicio PSV</label>
-<input type="datetime-local" id="startC">
+<input type="datetime-local" id="startC" required>
 
 <label>Término PSV</label>
-<input type="datetime-local" id="endC">
+<input type="datetime-local" id="endC" required>
 
 <label>¿Cambio ≥ 45° longitud?</label>
 <select id="lonC">
@@ -142,104 +104,177 @@ Esta aplicación se basa exclusivamente en los numerales
   <option value="si">Sí</option>
 </select>
 
-<button class="calc" onclick="calcCabina()">Calcular PD</button>
+<button class="calc" onclick="calcCabina()">Calcular PD y Validar</button>
 <div class="result" id="resC"></div>
 </div>
 
 </div>
 
+<!-- Botón Normativa -->
+<button id="normativaBtn">Normativa Completa</button>
+
+<!-- Modal -->
+<div id="myModal" class="modal">
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <h2>DAN 121.605 (ED3/ENM7 ABR 2025) - Extracto clave</h2>
+    <h3>(b) Tripulantes de Vuelo - PD post-PSV</h3>
+    <table>
+      <tr><th>PSV (horas)</th><th>PD (horas)</th></tr>
+      <tr><td>7 o menos</td><td>10</td></tr>
+      <tr><td>8</td><td>12</td></tr>
+      <tr><td>9</td><td>13</td></tr>
+      <tr><td>10</td><td>14</td></tr>
+      <tr><td>11-13</td><td>15</td></tr>
+      <tr><td>14-15</td><td>17</td></tr>
+      <tr><td>16</td><td>18</td></tr>
+      <tr><td>17</td><td>19</td></tr>
+      <tr><td>18</td><td>20</td></tr>
+      <tr><td>19</td><td>22</td></tr>
+      <tr><td>20</td><td>24</td></tr>
+    </table>
+    <p><strong>Ajustes:</strong> +2 h por cambio ≥45° longitud (+30 min por cada 15° adicional). Si PD=10 h: +45 min traslado base / +20 min postas (no cuenta como PD/PSV).</p>
+
+    <h3>(c) Tripulantes de Cabina - PD post-PSV</h3>
+    <table>
+      <tr><th>PSV (horas)</th><th>PD (horas)</th></tr>
+      <tr><td>7 o menos</td><td>10</td></tr>
+      <tr><td>8</td><td>11</td></tr>
+      <tr><td>9</td><td>12</td></tr>
+      <tr><td>10</td><td>13</td></tr>
+      <tr><td>11</td><td>14</td></tr>
+      <tr><td>12</td><td>15</td></tr>
+      <tr><td>13</td><td>16</td></tr>
+      <tr><td>14</td><td>17</td></tr>
+      <tr><td>15</td><td>18</td></tr>
+      <tr><td>16</td><td>19</td></tr>
+      <tr><td>17</td><td>20</td></tr>
+      <tr><td>18</td><td>21</td></tr>
+      <tr><td>19</td><td>22</td></tr>
+      <tr><td>20</td><td>24</td></tr>
+    </table>
+    <p><strong>Ajustes:</strong> iguales a vuelo. PSV límites: Mínima 12 h (+2 ext.), Reforzada 20 h. Mensual 160 h, etc.</p>
+
+    <p><em>Fuente: DAN 121 ED3/ENM7 (págs. 121-124). Verifica siempre en dgac.gob.cl.</em></p>
+  </div>
+</div>
+
 <script>
 function switchView(v){
-  vuelo.style.display = v==="vuelo"?"block":"none";
-  cabina.style.display = v==="cabina"?"block":"none";
-  btnVuelo.classList.toggle("active",v==="vuelo");
-  btnCabina.classList.toggle("active",v==="cabina");
+  document.getElementById('vuelo').style.display = v==="vuelo"?"block":"none";
+  document.getElementById('cabina').style.display = v==="cabina"?"block":"none";
+  document.getElementById('btnVuelo').classList.toggle("active",v==="vuelo");
+  document.getElementById('btnCabina').classList.toggle("active",v==="cabina");
 }
 
-function horas(a,b){ return (b-a)/3600000; }
+function horas(a,b){ return (new Date(b) - new Date(a)) / 3600000; }
 
-// ====================
-// TRIPULACIÓN DE VUELO
-// ====================
+// Modal control
+const modal = document.getElementById("myModal");
+const btn = document.getElementById("normativaBtn");
+const span = document.getElementsByClassName("close")[0];
+btn.onclick = () => modal.style.display = "block";
+span.onclick = () => modal.style.display = "none";
+window.onclick = (event) => { if (event.target == modal) modal.style.display = "none"; };
+
+// Calc Vuelo
 function calcVuelo(){
-  const s=new Date(startV.value), e=new Date(endV.value);
-  if(!s||!e||e<=s){ resV.textContent="❌ Fechas inválidas."; return; }
+  const start = document.getElementById('startV').value;
+  const end = document.getElementById('endV').value;
+  if(!start || !end || new Date(end) <= new Date(start)){ 
+    document.getElementById('resV').innerHTML = '<div class="danger">❌ Fechas inválidas o término antes de inicio.</div>'; 
+    return; 
+  }
+  const psv = horas(start, end);
+  const tipo = document.getElementById('tipoVuelo').value;
+  const lon = document.getElementById('lonV').value === 'si';
+  let maxPSV = tipo==='2'?12 : tipo==='3'?18 : 20;
+  let pd = 0;
+  let msgClass = 'success';
+  let texto = `PSV calculado: ${psv.toFixed(2)} h\n`;
 
-  const psv=horas(s,e);
-  const PD_MIN=10;
-  let pd, texto="", citas=[];
-
-  if(psv<7){
-    pd=PD_MIN;
-    const nextStart=new Date(e.getTime()+pd*3600000);
-    const maxNextPSV=8;
-
-    texto+=
-`PSV actual: ${psv.toFixed(2)} h
-PD aplicado: ${pd} h (mínimo)
-
-🕒 Próximo PSV puede iniciar:
-${nextStart.toLocaleString()}
-
-⏱️ Duración máxima del próximo PSV:
-${maxNextPSV} h
-
-Normativa aplicada:
-• DAN 121.605(b)
-• DAN 121.605(b)(2)(v)
-`;
-    resV.textContent=texto;
-    return;
+  // Validar PSV max
+  if (psv > maxPSV + 2) { // +ext contingencia
+    texto += '❌ PSV EXCEDE límite máximo permitido.\n';
+    msgClass = 'danger';
+  } else if (psv > maxPSV) {
+    texto += '⚠️ PSV en extensión (solo contingencias).\n';
+    msgClass = 'warning';
   }
 
-  if(psv<8){
-    pd=PD_MIN;
-    citas.push("DAN 121.605(b) – Período de Descanso mínimo");
-  } else {
-    pd=11;
-    citas.push("DAN 121.605(b)(2)(iii) – PSV 8 h → PD 11 h");
+  // PD tabla vuelo
+  if (psv <= 7) pd = 10;
+  else if (psv <= 8) pd = 12;
+  else if (psv <= 9) pd = 13;
+  else if (psv <= 10) pd = 14;
+  else if (psv <= 13) pd = 15;
+  else if (psv <= 15) pd = 17;
+  else if (psv <= 16) pd = 18;
+  else if (psv <= 17) pd = 19;
+  else if (psv <= 18) pd = 20;
+  else if (psv <= 19) pd = 22;
+  else if (psv <= 20) pd = 24;
+  else {
+    texto += '❌ PSV fuera de tabla (máx 20 h).\n';
+    msgClass = 'danger';
   }
 
-  if(lonV.value==="si"){
-    pd+=2;
-    citas.push("DAN 121.605(b)(2)(iv) – Ajuste por longitud");
-  }
+  if (lon) pd += 2; // +2 h base (nota progresiva)
 
-  resV.textContent=
-`PSV: ${psv.toFixed(2)} h
-PD aplicable: ${pd} h
+  texto += `PD mínimo aplicable: ${pd} h\n`;
+  if (pd === 10) texto += 'Nota: Agregar traslados si aplica (+45 min base / +20 min postas, no cuenta como PD).\n';
+  if (lon) texto += 'Nota: +2 h por ≥45° longitud (+30 min por cada 15° adicional según norma).\n';
 
-Normativa aplicada:
-• ${citas.join("\n• ")}`;
+  texto += '\nNormativa: DAN 121.605(b) - Tabla PD y ajustes (iv)(E).';
+
+  document.getElementById('resV').innerHTML = `<div class="${msgClass}">${texto}</div>`;
 }
 
-// =====================
-// TRIPULACIÓN DE CABINA
-// =====================
+// Calc Cabina (similar)
 function calcCabina(){
-  const s=new Date(startC.value), e=new Date(endC.value);
-  if(!s||!e||e<=s){ resC.textContent="❌ Fechas inválidas."; return; }
+  const start = document.getElementById('startC').value;
+  const end = document.getElementById('endC').value;
+  if(!start || !end || new Date(end) <= new Date(start)){ 
+    document.getElementById('resC').innerHTML = '<div class="danger">❌ Fechas inválidas o término antes de inicio.</div>'; 
+    return; 
+  }
+  const psv = horas(start, end);
+  const tipo = document.getElementById('tipoCabina').value;
+  const lon = document.getElementById('lonC').value === 'si';
+  let maxPSV = tipo==='min'?12 : 20;
+  let pd = null;
+  let msgClass = 'success';
+  let texto = `PSV calculado: ${psv.toFixed(2)} h\n`;
 
-  const psv=horas(s,e);
-  const tabla=[[7,10],[8,11],[9,12],[10,13],[11,14],[12,15],[13,16],[14,17],[15,18],[16,19],[17,20],[18,21],[19,22],[20,24]];
-  let pd=null;
-
-  for(const r of tabla){ if(psv<=r[0]){ pd=r[1]; break; } }
-
-  if(pd===null){
-    resC.textContent="⚠️ PSV fuera de tabla cabina\nDAN 121.605(c)(2)(i)";
-    return;
+  // Validar PSV max
+  if (psv > maxPSV + (tipo==='min'?2:0)) {
+    texto += '❌ PSV EXCEDE límite máximo.\n';
+    msgClass = 'danger';
+  } else if (psv > maxPSV) {
+    texto += '⚠️ PSV en extensión (solo mínima).\n';
+    msgClass = 'warning';
   }
 
-  if(lonC.value==="si") pd+=2;
+  // Tabla cabina
+  const tabla = [7,8,9,10,11,12,13,14,15,16,17,18,19,20];
+  const pds = [10,11,12,13,14,15,16,17,18,19,20,21,22,24];
+  for (let i=0; i<tabla.length; i++){
+    if (psv <= tabla[i]) { pd = pds[i]; break; }
+  }
+  if (pd === null) {
+    texto += '❌ PSV fuera de tabla (máx 20 h).\n';
+    msgClass = 'danger';
+  }
 
-  resC.textContent=
-`PSV: ${psv.toFixed(2)} h
-PD aplicable: ${pd} h
+  if (lon) pd += 2;
 
-Normativa aplicada:
-• DAN 121.605(c)(2)(i)
-• DAN 121.605(c)(2)(iv)`;
+  texto += `PD mínimo aplicable: ${pd} h\n`;
+  if (pd === 10) texto += 'Nota: Agregar traslados si aplica (+45 min base / +20 min postas).\n';
+  if (lon) texto += 'Nota: +2 h por ≥45° longitud (+30 min por cada 15° adicional).\n';
+
+  texto += '\nNormativa: DAN 121.605(c) - Tabla PD y ajustes (iv).';
+
+  document.getElementById('resC').innerHTML = `<div class="${msgClass}">${texto}</div>`;
 }
 </script>
 
