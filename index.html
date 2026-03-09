@@ -46,10 +46,17 @@ button.calc { background: #0b2d48; color: white; padding: 14px; border: none; bo
       <option value="4">4 Pilotos</option>
     </select>
 
-    <label>Inicio PSV</label>
-    <input type="datetime-local" id="startV" required>
+    <label>Ciudad de despegue</label>
+    <select id="fromV" required></select>
 
-    <label>Término PSV</label>
+    <label>Ciudad de aterrizaje</label>
+    <select id="toV" required></select>
+
+    <label>Inicio PSV (UTC)</label>
+    <input type="datetime-local" id="startV" required>
+    <small>Ingresa fecha/hora en UTC (ej: 2025-04-01 13:30 UTC).</small>
+
+    <label>Término PSV (UTC)</label>
     <input type="datetime-local" id="endV" required>
 
     <label>¿Cambio ≥ 45° longitud?</label>
@@ -70,10 +77,17 @@ button.calc { background: #0b2d48; color: white; padding: 14px; border: none; bo
       <option value="ref">Reforzada</option>
     </select>
 
-    <label>Inicio PSV</label>
-    <input type="datetime-local" id="startC" required>
+    <label>Ciudad de despegue</label>
+    <select id="fromC" required></select>
 
-    <label>Término PSV</label>
+    <label>Ciudad de aterrizaje</label>
+    <select id="toC" required></select>
+
+    <label>Inicio PSV (UTC)</label>
+    <input type="datetime-local" id="startC" required>
+    <small>Ingresa fecha/hora en UTC (ej: 2025-04-01 13:30 UTC).</small>
+
+    <label>Término PSV (UTC)</label>
     <input type="datetime-local" id="endC" required>
 
     <label>¿Cambio ≥ 45° longitud?</label>
@@ -89,6 +103,37 @@ button.calc { background: #0b2d48; color: white; padding: 14px; border: none; bo
 </div>
 
 <script>
+const CITY_TIMEZONES = {
+  SCL: { name: 'Santiago (SCL)', offset: -4 },
+  LIM: { name: 'Lima (LIM)', offset: -5 },
+  BOG: { name: 'Bogotá (BOG)', offset: -5 },
+  MEX: { name: 'Ciudad de México (MEX)', offset: -6 },
+  MIA: { name: 'Miami (MIA)', offset: -5 },
+  JFK: { name: 'New York (JFK)', offset: -5 },
+  MAD: { name: 'Madrid (MAD)', offset: 1 },
+  GRU: { name: 'São Paulo (GRU)', offset: -3 },
+  SYD: { name: 'Sídney (SYD)', offset: 10 },
+  MEL: { name: 'Melbourne (MEL)', offset: 10 },
+  EZE: { name: 'Buenos Aires (EZE)', offset: -3 },
+  LAX: { name: 'Los Ángeles (LAX)', offset: -8 },
+  CUN: { name: 'Cancún (CUN)', offset: -5 }
+};
+
+function populateCitySelect(selectId) {
+  const select = document.getElementById(selectId);
+  select.innerHTML = '<option value="">Selecciona ciudad...</option>';
+  Object.keys(CITY_TIMEZONES).forEach((code) => {
+    const option = document.createElement('option');
+    option.value = code;
+    option.textContent = CITY_TIMEZONES[code].name;
+    select.appendChild(option);
+  });
+}
+
+function initializeCitySelectors() {
+  ['fromV', 'toV', 'fromC', 'toC'].forEach(populateCitySelect);
+}
+
 // Switch entre pestañas (solo dos)
 function switchView(v) {
   document.getElementById('vuelo').style.display = v === 'vuelo' ? 'block' : 'none';
@@ -99,48 +144,81 @@ function switchView(v) {
 }
 
 // Cálculo horas
-function horas(a, b) { return (new Date(b) - new Date(a)) / 3600000; }
+function parseUtcDate(datetimeLocalValue) {
+  return new Date(`${datetimeLocalValue}:00Z`);
+}
 
-// % nocturno preciso (por minuto)
-function calculateNocturnalHours(startStr, endStr) {
-  const start = new Date(startStr);
-  const end = new Date(endStr);
+function formatUtc(date) {
+  return date.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+}
+
+// Cálculo horas (entradas UTC)
+function horas(a, b) { return (parseUtcDate(b) - parseUtcDate(a)) / 3600000; }
+
+function getRouteOffsets(fromCity, toCity) {
+  return {
+    fromOffset: CITY_TIMEZONES[fromCity].offset,
+    toOffset: CITY_TIMEZONES[toCity].offset
+  };
+}
+
+// % nocturno estimado por minuto considerando zona horaria de ruta
+function calculateNocturnalHoursByRoute(startStr, endStr, fromCity, toCity) {
+  const start = parseUtcDate(startStr);
+  const end = parseUtcDate(endStr);
+  const duration = end - start;
+  const { fromOffset, toOffset } = getRouteOffsets(fromCity, toCity);
   let nocturnal = 0;
   let current = new Date(start);
+
   while (current < end) {
-    const next = new Date(current.getTime() + 60000);
+    let next = new Date(current.getTime() + 60000);
     if (next > end) next = end;
-    const hour = current.getHours();
-    if (hour >= 21 || hour < 6) nocturnal += (next - current) / 3600000;
+
+    const progress = duration > 0 ? (current - start) / duration : 0;
+    const currentOffset = fromOffset + (toOffset - fromOffset) * progress;
+    const localHour = (current.getUTCHours() + currentOffset + 24) % 24;
+
+    if (localHour >= 21 || localHour < 6) nocturnal += (next - current) / 3600000;
     current = next;
   }
   return nocturnal;
+}
+
+function validateCities(fromCity, toCity, resId) {
+  if (!fromCity || !toCity) {
+    document.getElementById(resId).innerHTML = '<div class="danger">❌ Debes seleccionar ciudad de despegue y de aterrizaje.</div>';
+    return false;
+  }
+  return true;
 }
 
 // calcVuelo (completo)
 function calcVuelo() {
   const startStr = document.getElementById('startV').value;
   const endStr = document.getElementById('endV').value;
-  if (!startStr || !endStr || new Date(endStr) <= new Date(startStr)) {
+  const fromCity = document.getElementById('fromV').value;
+  const toCity = document.getElementById('toV').value;
+
+  if (!validateCities(fromCity, toCity, 'resV')) return;
+  if (!startStr || !endStr || parseUtcDate(endStr) <= parseUtcDate(startStr)) {
     document.getElementById('resV').innerHTML = '<div class="danger">❌ Fechas inválidas o término antes de inicio.</div>';
     return;
   }
+
   const psv = horas(startStr, endStr);
   const tipo = document.getElementById('tipoVuelo').value;
   const lon = document.getElementById('lonV').value === 'si';
-  const startDate = new Date(startStr);
-  const endDate = new Date(endStr);
-  const startHour = startDate.getHours();
+  const startDate = parseUtcDate(startStr);
+  const endDate = parseUtcDate(endStr);
   let maxPSV = tipo === '2' ? 12 : tipo === '3' ? 18 : 20;
   let pd = 0;
   let msgClass = 'success';
-  let texto = `PSV: ${psv.toFixed(2)} h\nInicio: ${startDate.toLocaleString('es-CL')}\nTérmino: ${endDate.toLocaleString('es-CL')}\n`;
+  let texto = `Ruta: ${CITY_TIMEZONES[fromCity].name} → ${CITY_TIMEZONES[toCity].name}\nPSV: ${psv.toFixed(2)} h\nInicio (UTC): ${formatUtc(startDate)}\nTérmino (UTC): ${formatUtc(endDate)}\n`;
 
-  if (startHour >= 21 || startHour < 6) texto += '⚠️ Inicio en rango nocturno (asumiendo aprobación).\n';
-
-  const nocturnal = calculateNocturnalHours(startStr, endStr);
+  const nocturnal = calculateNocturnalHoursByRoute(startStr, endStr, fromCity, toCity);
   const percent = psv > 0 ? (nocturnal / psv * 100) : 0;
-  texto += `Nocturno: ${nocturnal.toFixed(2)} h (${percent.toFixed(1)}%)\n`;
+  texto += `Nocturno estimado por ruta: ${nocturnal.toFixed(2)} h (${percent.toFixed(1)}%)\n`;
   if (percent > 50) texto += '⚠️ >50% nocturno → Solo un segundo PSV nocturno consecutivo, ≤50% nocturno (121.605(b)(2)(v)).\n';
 
   if (psv > maxPSV + 2) { texto += '❌ Excede máximo.\n'; msgClass = 'danger'; }
@@ -161,7 +239,7 @@ function calcVuelo() {
 
   if (lon) pd += 2;
 
-  texto += `PD mínimo: ${pd} h\nFin PD (inicio próximo): ${new Date(endDate.getTime() + pd * 3600000).toLocaleString('es-CL')}\n`;
+  texto += `PD mínimo: ${pd} h\nFin PD (inicio próximo, UTC): ${formatUtc(new Date(endDate.getTime() + pd * 3600000))}\n`;
   if (pd === 10) texto += 'Nota: +45 min base / +20 min postas si aplica.\n';
   if (lon) texto += 'Nota: +2 h por ≥45° longitud (+30 min cada 15° adicional).\n';
 
@@ -172,46 +250,56 @@ function calcVuelo() {
 function calcCabina() {
   const startStr = document.getElementById('startC').value;
   const endStr = document.getElementById('endC').value;
-  if (!startStr || !endStr || new Date(endStr) <= new Date(startStr)) {
+  const fromCity = document.getElementById('fromC').value;
+  const toCity = document.getElementById('toC').value;
+
+  if (!validateCities(fromCity, toCity, 'resC')) return;
+  if (!startStr || !endStr || parseUtcDate(endStr) <= parseUtcDate(startStr)) {
     document.getElementById('resC').innerHTML = '<div class="danger">❌ Fechas inválidas o término antes de inicio.</div>';
     return;
   }
+
   const psv = horas(startStr, endStr);
   const tipo = document.getElementById('tipoCabina').value;
   const lon = document.getElementById('lonC').value === 'si';
-  const startDate = new Date(startStr);
-  const endDate = new Date(endStr);
-  const startHour = startDate.getHours();
+  const startDate = parseUtcDate(startStr);
+  const endDate = parseUtcDate(endStr);
   let maxPSV = tipo === 'min' ? 12 : 20;
   let pd = null;
   let msgClass = 'success';
-  let texto = `PSV: ${psv.toFixed(2)} h\nInicio: ${startDate.toLocaleString('es-CL')}\nTérmino: ${endDate.toLocaleString('es-CL')}\n`;
+  let texto = `Ruta: ${CITY_TIMEZONES[fromCity].name} → ${CITY_TIMEZONES[toCity].name}\nPSV: ${psv.toFixed(2)} h\nInicio (UTC): ${formatUtc(startDate)}\nTérmino (UTC): ${formatUtc(endDate)}\n`;
 
-  if (startHour >= 21 || startHour < 6) texto += '⚠️ Inicio nocturno (verifica operador).\n';
-
-  const nocturnal = calculateNocturnalHours(startStr, endStr);
+  const nocturnal = calculateNocturnalHoursByRoute(startStr, endStr, fromCity, toCity);
   const percent = psv > 0 ? (nocturnal / psv * 100) : 0;
-  texto += `Nocturno: ${nocturnal.toFixed(2)} h (${percent.toFixed(1)}%)\n`;
+  texto += `Nocturno estimado por ruta: ${nocturnal.toFixed(2)} h (${percent.toFixed(1)}%)\n`;
   if (percent > 50) texto += '⚠️ >50% nocturno → Solo un segundo PSV nocturno consecutivo, ≤50% nocturno.\n';
 
   if (psv > maxPSV + (tipo === 'min' ? 2 : 0)) { texto += '❌ Excede máximo.\n'; msgClass = 'danger'; }
   else if (psv > maxPSV) { texto += '⚠️ En extensión.\n'; msgClass = 'warning'; }
 
-  const tabla = [7,8,9,10,11,12,13,14,15,16,17,18,19,20];
-  const pds = [10,11,12,13,14,15,16,17,18,19,20,21,22,24];
+  const tabla = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+  const pds = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24];
   for (let i = 0; i < tabla.length; i++) {
     if (psv <= tabla[i]) { pd = pds[i]; break; }
   }
-  if (pd === null) { texto += '❌ Fuera de tabla.\n'; msgClass = 'danger'; }
+
+  if (pd === null) {
+    texto += '❌ Fuera de tabla.\n';
+    msgClass = 'danger';
+    document.getElementById('resC').innerHTML = `<div class="${msgClass}">${texto}</div>`;
+    return;
+  }
 
   if (lon) pd += 2;
 
-  texto += `PD mínimo: ${pd} h\nFin PD: ${new Date(endDate.getTime() + pd * 3600000).toLocaleString('es-CL')}\n`;
+  texto += `PD mínimo: ${pd} h\nFin PD (UTC): ${formatUtc(new Date(endDate.getTime() + pd * 3600000))}\n`;
   if (pd === 10) texto += 'Nota traslados.\n';
   if (lon) texto += 'Nota longitud.\n';
 
   document.getElementById('resC').innerHTML = `<div class="${msgClass}">${texto}</div>`;
 }
+
+initializeCitySelectors();
 </script>
 
 </body>
