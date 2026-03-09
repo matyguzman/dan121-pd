@@ -52,10 +52,11 @@ button.calc { background: #0b2d48; color: white; padding: 14px; border: none; bo
     <label>Ciudad de aterrizaje</label>
     <select id="toV" required></select>
 
-    <label>Inicio PSV</label>
+    <label>Inicio PSV (UTC)</label>
     <input type="datetime-local" id="startV" required>
+    <small>Ingresa fecha/hora en UTC (ej: 2025-04-01 13:30 UTC).</small>
 
-    <label>Término PSV</label>
+    <label>Término PSV (UTC)</label>
     <input type="datetime-local" id="endV" required>
 
     <label>¿Cambio ≥ 45° longitud?</label>
@@ -82,10 +83,11 @@ button.calc { background: #0b2d48; color: white; padding: 14px; border: none; bo
     <label>Ciudad de aterrizaje</label>
     <select id="toC" required></select>
 
-    <label>Inicio PSV</label>
+    <label>Inicio PSV (UTC)</label>
     <input type="datetime-local" id="startC" required>
+    <small>Ingresa fecha/hora en UTC (ej: 2025-04-01 13:30 UTC).</small>
 
-    <label>Término PSV</label>
+    <label>Término PSV (UTC)</label>
     <input type="datetime-local" id="endC" required>
 
     <label>¿Cambio ≥ 45° longitud?</label>
@@ -141,7 +143,16 @@ function switchView(v) {
 }
 
 // Cálculo horas
-function horas(a, b) { return (new Date(b) - new Date(a)) / 3600000; }
+function parseUtcDate(datetimeLocalValue) {
+  return new Date(`${datetimeLocalValue}:00Z`);
+}
+
+function formatUtc(date) {
+  return date.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+}
+
+// Cálculo horas (entradas UTC)
+function horas(a, b) { return (parseUtcDate(b) - parseUtcDate(a)) / 3600000; }
 
 function getRouteOffsets(fromCity, toCity) {
   return {
@@ -152,8 +163,8 @@ function getRouteOffsets(fromCity, toCity) {
 
 // % nocturno estimado por minuto considerando zona horaria de ruta
 function calculateNocturnalHoursByRoute(startStr, endStr, fromCity, toCity) {
-  const start = new Date(startStr);
-  const end = new Date(endStr);
+  const start = parseUtcDate(startStr);
+  const end = parseUtcDate(endStr);
   const duration = end - start;
   const { fromOffset, toOffset } = getRouteOffsets(fromCity, toCity);
   let nocturnal = 0;
@@ -189,7 +200,7 @@ function calcVuelo() {
   const toCity = document.getElementById('toV').value;
 
   if (!validateCities(fromCity, toCity, 'resV')) return;
-  if (!startStr || !endStr || new Date(endStr) <= new Date(startStr)) {
+  if (!startStr || !endStr || parseUtcDate(endStr) <= parseUtcDate(startStr)) {
     document.getElementById('resV').innerHTML = '<div class="danger">❌ Fechas inválidas o término antes de inicio.</div>';
     return;
   }
@@ -197,12 +208,12 @@ function calcVuelo() {
   const psv = horas(startStr, endStr);
   const tipo = document.getElementById('tipoVuelo').value;
   const lon = document.getElementById('lonV').value === 'si';
-  const startDate = new Date(startStr);
-  const endDate = new Date(endStr);
+  const startDate = parseUtcDate(startStr);
+  const endDate = parseUtcDate(endStr);
   let maxPSV = tipo === '2' ? 12 : tipo === '3' ? 18 : 20;
   let pd = 0;
   let msgClass = 'success';
-  let texto = `Ruta: ${CITY_TIMEZONES[fromCity].name} → ${CITY_TIMEZONES[toCity].name}\nPSV: ${psv.toFixed(2)} h\nInicio: ${startDate.toLocaleString('es-CL')}\nTérmino: ${endDate.toLocaleString('es-CL')}\n`;
+  let texto = `Ruta: ${CITY_TIMEZONES[fromCity].name} → ${CITY_TIMEZONES[toCity].name}\nPSV: ${psv.toFixed(2)} h\nInicio (UTC): ${formatUtc(startDate)}\nTérmino (UTC): ${formatUtc(endDate)}\n`;
 
   const nocturnal = calculateNocturnalHoursByRoute(startStr, endStr, fromCity, toCity);
   const percent = psv > 0 ? (nocturnal / psv * 100) : 0;
@@ -227,7 +238,7 @@ function calcVuelo() {
 
   if (lon) pd += 2;
 
-  texto += `PD mínimo: ${pd} h\nFin PD (inicio próximo): ${new Date(endDate.getTime() + pd * 3600000).toLocaleString('es-CL')}\n`;
+  texto += `PD mínimo: ${pd} h\nFin PD (inicio próximo, UTC): ${formatUtc(new Date(endDate.getTime() + pd * 3600000))}\n`;
   if (pd === 10) texto += 'Nota: +45 min base / +20 min postas si aplica.\n';
   if (lon) texto += 'Nota: +2 h por ≥45° longitud (+30 min cada 15° adicional).\n';
 
@@ -242,7 +253,7 @@ function calcCabina() {
   const toCity = document.getElementById('toC').value;
 
   if (!validateCities(fromCity, toCity, 'resC')) return;
-  if (!startStr || !endStr || new Date(endStr) <= new Date(startStr)) {
+  if (!startStr || !endStr || parseUtcDate(endStr) <= parseUtcDate(startStr)) {
     document.getElementById('resC').innerHTML = '<div class="danger">❌ Fechas inválidas o término antes de inicio.</div>';
     return;
   }
@@ -250,12 +261,12 @@ function calcCabina() {
   const psv = horas(startStr, endStr);
   const tipo = document.getElementById('tipoCabina').value;
   const lon = document.getElementById('lonC').value === 'si';
-  const startDate = new Date(startStr);
-  const endDate = new Date(endStr);
+  const startDate = parseUtcDate(startStr);
+  const endDate = parseUtcDate(endStr);
   let maxPSV = tipo === 'min' ? 12 : 20;
   let pd = null;
   let msgClass = 'success';
-  let texto = `Ruta: ${CITY_TIMEZONES[fromCity].name} → ${CITY_TIMEZONES[toCity].name}\nPSV: ${psv.toFixed(2)} h\nInicio: ${startDate.toLocaleString('es-CL')}\nTérmino: ${endDate.toLocaleString('es-CL')}\n`;
+  let texto = `Ruta: ${CITY_TIMEZONES[fromCity].name} → ${CITY_TIMEZONES[toCity].name}\nPSV: ${psv.toFixed(2)} h\nInicio (UTC): ${formatUtc(startDate)}\nTérmino (UTC): ${formatUtc(endDate)}\n`;
 
   const nocturnal = calculateNocturnalHoursByRoute(startStr, endStr, fromCity, toCity);
   const percent = psv > 0 ? (nocturnal / psv * 100) : 0;
@@ -280,7 +291,7 @@ function calcCabina() {
 
   if (lon) pd += 2;
 
-  texto += `PD mínimo: ${pd} h\nFin PD: ${new Date(endDate.getTime() + pd * 3600000).toLocaleString('es-CL')}\n`;
+  texto += `PD mínimo: ${pd} h\nFin PD (UTC): ${formatUtc(new Date(endDate.getTime() + pd * 3600000))}\n`;
   if (pd === 10) texto += 'Nota traslados.\n';
   if (lon) texto += 'Nota longitud.\n';
 
