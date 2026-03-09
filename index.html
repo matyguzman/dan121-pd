@@ -108,7 +108,7 @@ function calculateNocturnalHours(startStr, endStr) {
   let nocturnal = 0;
   let current = new Date(start);
   while (current < end) {
-    const next = new Date(current.getTime() + 60000);
+    let next = new Date(current.getTime() + 60000);
     if (next > end) next = end;
     const hour = current.getHours();
     if (hour >= 21 || hour < 6) nocturnal += (next - current) / 3600000;
@@ -202,7 +202,12 @@ function calcCabina() {
   for (let i = 0; i < tabla.length; i++) {
     if (psv <= tabla[i]) { pd = pds[i]; break; }
   }
-  if (pd === null) { texto += '❌ Fuera de tabla.\n'; msgClass = 'danger'; }
+  if (pd === null) {
+    texto += '❌ Fuera de tabla.\n';
+    msgClass = 'danger';
+    document.getElementById('resC').innerHTML = `<div class="${msgClass}">${texto}</div>`;
+    return;
+  }
 
   if (lon) pd += 2;
 
