@@ -193,11 +193,6 @@ function validateCities(fromCity, toCity, resId) {
   return true;
 }
 
-function startedInNightWindowUtc(date) {
-  const hour = date.getUTCHours();
-  return hour >= 21 || hour < 6;
-}
-
 // calcVuelo (completo)
 function calcVuelo() {
   const startStr = document.getElementById('startV').value;
@@ -226,17 +221,8 @@ function calcVuelo() {
   texto += `Nocturno estimado por ruta: ${nocturnal.toFixed(2)} h (${percent.toFixed(1)}%)\n`;
   if (percent > 50) texto += '⚠️ >50% nocturno → Solo un segundo PSV nocturno consecutivo, ≤50% nocturno (121.605(b)(2)(v)).\n';
 
-  const startInNightWindow = startedInNightWindowUtc(startDate);
   if (psv > maxPSV + 2) { texto += '❌ Excede máximo.\n'; msgClass = 'danger'; }
-  else if (psv > maxPSV) {
-    if (startInNightWindow) {
-      texto += '❌ No se permite extensión: PSV iniciado entre 21:00 y 06:00 UTC.\n';
-      msgClass = 'danger';
-    } else {
-      texto += '⚠️ En extensión.\n';
-      msgClass = 'warning';
-    }
-  }
+  else if (psv > maxPSV) { texto += '⚠️ En extensión.\n'; msgClass = 'warning'; }
 
   if (psv <= 7) pd = 10;
   else if (psv <= 8) pd = 12;
@@ -288,17 +274,8 @@ function calcCabina() {
   texto += `Nocturno estimado por ruta: ${nocturnal.toFixed(2)} h (${percent.toFixed(1)}%)\n`;
   if (percent > 50) texto += '⚠️ >50% nocturno → Solo un segundo PSV nocturno consecutivo, ≤50% nocturno.\n';
 
-  const startInNightWindow = startedInNightWindowUtc(startDate);
   if (psv > maxPSV + (tipo === 'min' ? 2 : 0)) { texto += '❌ Excede máximo.\n'; msgClass = 'danger'; }
-  else if (psv > maxPSV) {
-    if (startInNightWindow) {
-      texto += '❌ No se permite extensión: PSV iniciado entre 21:00 y 06:00 UTC.\n';
-      msgClass = 'danger';
-    } else {
-      texto += '⚠️ En extensión.\n';
-      msgClass = 'warning';
-    }
-  }
+  else if (psv > maxPSV) { texto += '⚠️ En extensión.\n'; msgClass = 'warning'; }
 
   const tabla = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
   const pds = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24];
