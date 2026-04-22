@@ -15,6 +15,7 @@ nav button.active { background: #ffffff; }
 .card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
 label { font-weight: 600; margin-top: 12px; display: block; }
 input, select { width: 100%; padding: 10px; margin-top: 4px; border-radius: 8px; border: 1px solid #ccc; }
+small { display: block; color: #475569; margin-top: 4px; }
 button.calc { background: #0b2d48; color: white; padding: 14px; border: none; border-radius: 10px; width: 100%; font-size: 16px; margin-top: 16px; cursor: pointer; }
 .result { white-space: pre-line; font-size: 14px; margin-top: 16px; padding: 12px; border-radius: 8px; }
 .success { background: #e6ffe6; border: 1px solid #28a745; }
@@ -37,7 +38,6 @@ button.calc { background: #0b2d48; color: white; padding: 14px; border: none; bo
 
 <div class="container">
 
-  <!-- Tripulación de Vuelo -->
   <div id="vuelo" class="card">
     <label>Tipo de Tripulación</label>
     <select id="tipoVuelo">
@@ -46,11 +46,24 @@ button.calc { background: #0b2d48; color: white; padding: 14px; border: none; bo
       <option value="4">4 Pilotos</option>
     </select>
 
+    <label>Ciudad de despegue</label>
+    <select id="fromV" required></select>
+
+    <label>Ciudad de aterrizaje</label>
+    <select id="toV" required></select>
+
+    <label>Formato horario input PSV</label>
+    <select id="modeV">
+      <option value="utc">UTC</option>
+      <option value="local">Hora local aeropuerto de origen</option>
+    </select>
+
     <label>Inicio PSV</label>
     <input type="datetime-local" id="startV" required>
 
     <label>Término PSV</label>
     <input type="datetime-local" id="endV" required>
+    <small>Si eliges "Hora local", se interpreta según zona horaria del aeropuerto de origen (con cambios estacionales automáticos).</small>
 
     <label>¿Cambio ≥ 45° longitud?</label>
     <select id="lonV">
@@ -62,7 +75,6 @@ button.calc { background: #0b2d48; color: white; padding: 14px; border: none; bo
     <div class="result" id="resV"></div>
   </div>
 
-  <!-- Tripulación de Cabina -->
   <div id="cabina" class="card" style="display:none">
     <label>Tipo de Tripulación</label>
     <select id="tipoCabina">
@@ -70,11 +82,24 @@ button.calc { background: #0b2d48; color: white; padding: 14px; border: none; bo
       <option value="ref">Reforzada</option>
     </select>
 
+    <label>Ciudad de despegue</label>
+    <select id="fromC" required></select>
+
+    <label>Ciudad de aterrizaje</label>
+    <select id="toC" required></select>
+
+    <label>Formato horario input PSV</label>
+    <select id="modeC">
+      <option value="utc">UTC</option>
+      <option value="local">Hora local aeropuerto de origen</option>
+    </select>
+
     <label>Inicio PSV</label>
     <input type="datetime-local" id="startC" required>
 
     <label>Término PSV</label>
     <input type="datetime-local" id="endC" required>
+    <small>Si eliges "Hora local", se interpreta según zona horaria del aeropuerto de origen (con cambios estacionales automáticos).</small>
 
     <label>¿Cambio ≥ 45° longitud?</label>
     <select id="lonC">
@@ -89,62 +114,218 @@ button.calc { background: #0b2d48; color: white; padding: 14px; border: none; bo
 </div>
 
 <script>
-// Switch entre pestañas (solo dos)
+const CITIES = {
+  SCL: { name: 'Santiago (SCL)', timeZone: 'America/Santiago' },
+  LIM: { name: 'Lima (LIM)', timeZone: 'America/Lima' },
+  BOG: { name: 'Bogotá (BOG)', timeZone: 'America/Bogota' },
+  MEX: { name: 'Ciudad de México (MEX)', timeZone: 'America/Mexico_City' },
+  MIA: { name: 'Miami (MIA)', timeZone: 'America/New_York' },
+  JFK: { name: 'New York (JFK)', timeZone: 'America/New_York' },
+  MAD: { name: 'Madrid (MAD)', timeZone: 'Europe/Madrid' },
+  GRU: { name: 'São Paulo (GRU)', timeZone: 'America/Sao_Paulo' },
+  SYD: { name: 'Sídney (SYD)', timeZone: 'Australia/Sydney' },
+  MEL: { name: 'Melbourne (MEL)', timeZone: 'Australia/Melbourne' },
+  EZE: { name: 'Buenos Aires (EZE)', timeZone: 'America/Argentina/Buenos_Aires' },
+  LAX: { name: 'Los Ángeles (LAX)', timeZone: 'America/Los_Angeles' },
+  CUN: { name: 'Cancún (CUN)', timeZone: 'America/Cancun' }
+};
+
 function switchView(v) {
   document.getElementById('vuelo').style.display = v === 'vuelo' ? 'block' : 'none';
   document.getElementById('cabina').style.display = v === 'cabina' ? 'block' : 'none';
-
   document.getElementById('btnVuelo').classList.toggle('active', v === 'vuelo');
   document.getElementById('btnCabina').classList.toggle('active', v === 'cabina');
 }
 
-// Cálculo horas
-function horas(a, b) { return (new Date(b) - new Date(a)) / 3600000; }
+function populateCitySelect(selectId) {
+  const select = document.getElementById(selectId);
+  select.innerHTML = '<option value="">Selecciona ciudad...</option>';
+  Object.keys(CITIES).forEach((code) => {
+    const option = document.createElement('option');
+    option.value = code;
+    option.textContent = CITIES[code].name;
+    select.appendChild(option);
+  });
+}
 
-// % nocturno preciso (por minuto)
-function calculateNocturnalHours(startStr, endStr) {
-  const start = new Date(startStr);
-  const end = new Date(endStr);
+function initializeCitySelectors() {
+  ['fromV', 'toV', 'fromC', 'toC'].forEach(populateCitySelect);
+}
+
+function getOffsetMinutes(date, timeZone) {
+  const tzPart = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    timeZoneName: 'shortOffset'
+  }).formatToParts(date).find((part) => part.type === 'timeZoneName')?.value || 'GMT+0';
+
+  const match = tzPart.match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/);
+  if (!match) return 0;
+  const sign = match[1] === '-' ? -1 : 1;
+  const hours = Number(match[2]);
+  const minutes = Number(match[3] || 0);
+  return sign * (hours * 60 + minutes);
+}
+
+function parseDateTimeLocalParts(value) {
+  const [datePart, timePart] = value.split('T');
+  const [y, m, d] = datePart.split('-').map(Number);
+  const [hh, mm] = timePart.split(':').map(Number);
+  return { y, m, d, hh, mm };
+}
+
+function zonedDateTimeToUtc(value, timeZone) {
+  const { y, m, d, hh, mm } = parseDateTimeLocalParts(value);
+  let utcMs = Date.UTC(y, m - 1, d, hh, mm, 0);
+
+  for (let i = 0; i < 3; i++) {
+    const offset = getOffsetMinutes(new Date(utcMs), timeZone);
+    utcMs = Date.UTC(y, m - 1, d, hh, mm, 0) - offset * 60000;
+  }
+
+  return new Date(utcMs);
+}
+
+function parseInputDate(value, mode, originCity) {
+  if (mode === 'utc') return new Date(`${value}:00Z`);
+  return zonedDateTimeToUtc(value, CITIES[originCity].timeZone);
+}
+
+function formatUtc(date) {
+  return date.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+}
+
+function formatInTimeZone(date, timeZone) {
+  return new Intl.DateTimeFormat('es-CL', {
+    timeZone,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
+}
+
+function formatOffsetLabel(date, timeZone) {
+  const minutes = getOffsetMinutes(date, timeZone);
+  const sign = minutes >= 0 ? '+' : '-';
+  const abs = Math.abs(minutes);
+  const hh = String(Math.floor(abs / 60)).padStart(2, '0');
+  const mm = String(abs % 60).padStart(2, '0');
+  return `UTC${sign}${hh}:${mm}`;
+}
+
+function horas(startUtc, endUtc) {
+  return (endUtc - startUtc) / 3600000;
+}
+
+function startedInNightWindowLocal(startUtc, originCity) {
+  const tz = CITIES[originCity].timeZone;
+  const offset = getOffsetMinutes(startUtc, tz);
+  const local = new Date(startUtc.getTime() + offset * 60000);
+  const hour = local.getUTCHours() + (local.getUTCMinutes() / 60);
+  return hour >= 21 || hour < 6;
+}
+
+function calculateNocturnalHoursByRoute(startUtc, endUtc, fromCity, toCity) {
   let nocturnal = 0;
-  let current = new Date(start);
-  while (current < end) {
-    const next = new Date(current.getTime() + 60000);
-    if (next > end) next = end;
-    const hour = current.getHours();
+  let current = new Date(startUtc);
+  const total = endUtc - startUtc;
+
+  while (current < endUtc) {
+    let next = new Date(current.getTime() + 60000);
+    if (next > endUtc) next = endUtc;
+
+    const progress = total > 0 ? (current - startUtc) / total : 0;
+    const fromOffset = getOffsetMinutes(current, CITIES[fromCity].timeZone);
+    const toOffset = getOffsetMinutes(current, CITIES[toCity].timeZone);
+    const interpolatedOffset = fromOffset + (toOffset - fromOffset) * progress;
+
+    const routeLocal = new Date(current.getTime() + interpolatedOffset * 60000);
+    const hour = routeLocal.getUTCHours() + routeLocal.getUTCMinutes() / 60;
     if (hour >= 21 || hour < 6) nocturnal += (next - current) / 3600000;
+
     current = next;
   }
+
   return nocturnal;
 }
 
-// calcVuelo (completo)
+function validateCities(fromCity, toCity, resultId) {
+  if (!fromCity || !toCity) {
+    document.getElementById(resultId).innerHTML = '<div class="danger">❌ Debes seleccionar ciudad de despegue y de aterrizaje.</div>';
+    return false;
+  }
+  return true;
+}
+
+function validateDates(startValue, endValue, resultId, mode) {
+  if (!startValue || !endValue) {
+    document.getElementById(resultId).innerHTML = '<div class="danger">❌ Debes ingresar inicio y término de PSV.</div>';
+    return false;
+  }
+  if (mode !== 'utc' && mode !== 'local') {
+    document.getElementById(resultId).innerHTML = '<div class="danger">❌ Formato horario inválido.</div>';
+    return false;
+  }
+  return true;
+}
+
+function buildTimeFeedback(startUtc, endUtc, fromCity, toCity) {
+  const fromTz = CITIES[fromCity].timeZone;
+  const toTz = CITIES[toCity].timeZone;
+
+  return [
+    `Inicio UTC: ${formatUtc(startUtc)}`,
+    `Término UTC: ${formatUtc(endUtc)}`,
+    `Inicio local origen (${CITIES[fromCity].name}, ${formatOffsetLabel(startUtc, fromTz)}): ${formatInTimeZone(startUtc, fromTz)}`,
+    `Término local origen (${CITIES[fromCity].name}, ${formatOffsetLabel(endUtc, fromTz)}): ${formatInTimeZone(endUtc, fromTz)}`,
+    `Inicio local destino (${CITIES[toCity].name}, ${formatOffsetLabel(startUtc, toTz)}): ${formatInTimeZone(startUtc, toTz)}`,
+    `Término local destino (${CITIES[toCity].name}, ${formatOffsetLabel(endUtc, toTz)}): ${formatInTimeZone(endUtc, toTz)}`
+  ].join('\n');
+}
+
 function calcVuelo() {
   const startStr = document.getElementById('startV').value;
   const endStr = document.getElementById('endV').value;
-  if (!startStr || !endStr || new Date(endStr) <= new Date(startStr)) {
+  const fromCity = document.getElementById('fromV').value;
+  const toCity = document.getElementById('toV').value;
+  const mode = document.getElementById('modeV').value;
+
+  if (!validateCities(fromCity, toCity, 'resV')) return;
+  if (!validateDates(startStr, endStr, 'resV', mode)) return;
+
+  const startUtc = parseInputDate(startStr, mode, fromCity);
+  const endUtc = parseInputDate(endStr, mode, fromCity);
+  if (endUtc <= startUtc) {
     document.getElementById('resV').innerHTML = '<div class="danger">❌ Fechas inválidas o término antes de inicio.</div>';
     return;
   }
-  const psv = horas(startStr, endStr);
+
+  const psv = horas(startUtc, endUtc);
   const tipo = document.getElementById('tipoVuelo').value;
   const lon = document.getElementById('lonV').value === 'si';
-  const startDate = new Date(startStr);
-  const endDate = new Date(endStr);
-  const startHour = startDate.getHours();
   let maxPSV = tipo === '2' ? 12 : tipo === '3' ? 18 : 20;
   let pd = 0;
   let msgClass = 'success';
-  let texto = `PSV: ${psv.toFixed(2)} h\nInicio: ${startDate.toLocaleString('es-CL')}\nTérmino: ${endDate.toLocaleString('es-CL')}\n`;
+  let texto = `Ruta: ${CITIES[fromCity].name} → ${CITIES[toCity].name}\nInput interpretado en: ${mode === 'utc' ? 'UTC' : 'Hora local origen'}\nPSV: ${psv.toFixed(2)} h\n${buildTimeFeedback(startUtc, endUtc, fromCity, toCity)}\n`;
 
-  if (startHour >= 21 || startHour < 6) texto += '⚠️ Inicio en rango nocturno (asumiendo aprobación).\n';
-
-  const nocturnal = calculateNocturnalHours(startStr, endStr);
+  const nocturnal = calculateNocturnalHoursByRoute(startUtc, endUtc, fromCity, toCity);
   const percent = psv > 0 ? (nocturnal / psv * 100) : 0;
-  texto += `Nocturno: ${nocturnal.toFixed(2)} h (${percent.toFixed(1)}%)\n`;
+  texto += `Nocturno estimado por ruta: ${nocturnal.toFixed(2)} h (${percent.toFixed(1)}%)\n`;
   if (percent > 50) texto += '⚠️ >50% nocturno → Solo un segundo PSV nocturno consecutivo, ≤50% nocturno (121.605(b)(2)(v)).\n';
 
+  const startInNightLocalOrigin = startedInNightWindowLocal(startUtc, fromCity);
   if (psv > maxPSV + 2) { texto += '❌ Excede máximo.\n'; msgClass = 'danger'; }
-  else if (psv > maxPSV) { texto += '⚠️ En extensión.\n'; msgClass = 'warning'; }
+  else if (psv > maxPSV) {
+    if (startInNightLocalOrigin) {
+      texto += '❌ No se permite extensión: PSV inició entre 21:00 y 06:00 hora local del aeropuerto de origen.\n';
+      msgClass = 'danger';
+    } else {
+      texto += '⚠️ En extensión.\n';
+      msgClass = 'warning';
+    }
+  }
 
   if (psv <= 7) pd = 10;
   else if (psv <= 8) pd = 12;
@@ -161,57 +342,84 @@ function calcVuelo() {
 
   if (lon) pd += 2;
 
-  texto += `PD mínimo: ${pd} h\nFin PD (inicio próximo): ${new Date(endDate.getTime() + pd * 3600000).toLocaleString('es-CL')}\n`;
+  const endPdUtc = new Date(endUtc.getTime() + pd * 3600000);
+  texto += `PD mínimo: ${pd} h\nFin PD UTC: ${formatUtc(endPdUtc)}\n`;
+  texto += `Fin PD local origen (${CITIES[fromCity].name}): ${formatInTimeZone(endPdUtc, CITIES[fromCity].timeZone)}\n`;
+  texto += `Fin PD local destino (${CITIES[toCity].name}): ${formatInTimeZone(endPdUtc, CITIES[toCity].timeZone)}\n`;
   if (pd === 10) texto += 'Nota: +45 min base / +20 min postas si aplica.\n';
   if (lon) texto += 'Nota: +2 h por ≥45° longitud (+30 min cada 15° adicional).\n';
 
   document.getElementById('resV').innerHTML = `<div class="${msgClass}">${texto}</div>`;
 }
 
-// calcCabina (completo)
 function calcCabina() {
   const startStr = document.getElementById('startC').value;
   const endStr = document.getElementById('endC').value;
-  if (!startStr || !endStr || new Date(endStr) <= new Date(startStr)) {
+  const fromCity = document.getElementById('fromC').value;
+  const toCity = document.getElementById('toC').value;
+  const mode = document.getElementById('modeC').value;
+
+  if (!validateCities(fromCity, toCity, 'resC')) return;
+  if (!validateDates(startStr, endStr, 'resC', mode)) return;
+
+  const startUtc = parseInputDate(startStr, mode, fromCity);
+  const endUtc = parseInputDate(endStr, mode, fromCity);
+  if (endUtc <= startUtc) {
     document.getElementById('resC').innerHTML = '<div class="danger">❌ Fechas inválidas o término antes de inicio.</div>';
     return;
   }
-  const psv = horas(startStr, endStr);
+
+  const psv = horas(startUtc, endUtc);
   const tipo = document.getElementById('tipoCabina').value;
   const lon = document.getElementById('lonC').value === 'si';
-  const startDate = new Date(startStr);
-  const endDate = new Date(endStr);
-  const startHour = startDate.getHours();
   let maxPSV = tipo === 'min' ? 12 : 20;
   let pd = null;
   let msgClass = 'success';
-  let texto = `PSV: ${psv.toFixed(2)} h\nInicio: ${startDate.toLocaleString('es-CL')}\nTérmino: ${endDate.toLocaleString('es-CL')}\n`;
+  let texto = `Ruta: ${CITIES[fromCity].name} → ${CITIES[toCity].name}\nInput interpretado en: ${mode === 'utc' ? 'UTC' : 'Hora local origen'}\nPSV: ${psv.toFixed(2)} h\n${buildTimeFeedback(startUtc, endUtc, fromCity, toCity)}\n`;
 
-  if (startHour >= 21 || startHour < 6) texto += '⚠️ Inicio nocturno (verifica operador).\n';
-
-  const nocturnal = calculateNocturnalHours(startStr, endStr);
+  const nocturnal = calculateNocturnalHoursByRoute(startUtc, endUtc, fromCity, toCity);
   const percent = psv > 0 ? (nocturnal / psv * 100) : 0;
-  texto += `Nocturno: ${nocturnal.toFixed(2)} h (${percent.toFixed(1)}%)\n`;
+  texto += `Nocturno estimado por ruta: ${nocturnal.toFixed(2)} h (${percent.toFixed(1)}%)\n`;
   if (percent > 50) texto += '⚠️ >50% nocturno → Solo un segundo PSV nocturno consecutivo, ≤50% nocturno.\n';
 
+  const startInNightLocalOrigin = startedInNightWindowLocal(startUtc, fromCity);
   if (psv > maxPSV + (tipo === 'min' ? 2 : 0)) { texto += '❌ Excede máximo.\n'; msgClass = 'danger'; }
-  else if (psv > maxPSV) { texto += '⚠️ En extensión.\n'; msgClass = 'warning'; }
+  else if (psv > maxPSV) {
+    if (startInNightLocalOrigin) {
+      texto += '❌ No se permite extensión: PSV inició entre 21:00 y 06:00 hora local del aeropuerto de origen.\n';
+      msgClass = 'danger';
+    } else {
+      texto += '⚠️ En extensión.\n';
+      msgClass = 'warning';
+    }
+  }
 
-  const tabla = [7,8,9,10,11,12,13,14,15,16,17,18,19,20];
-  const pds = [10,11,12,13,14,15,16,17,18,19,20,21,22,24];
+  const tabla = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+  const pds = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24];
   for (let i = 0; i < tabla.length; i++) {
     if (psv <= tabla[i]) { pd = pds[i]; break; }
   }
-  if (pd === null) { texto += '❌ Fuera de tabla.\n'; msgClass = 'danger'; }
+
+  if (pd === null) {
+    texto += '❌ Fuera de tabla.\n';
+    msgClass = 'danger';
+    document.getElementById('resC').innerHTML = `<div class="${msgClass}">${texto}</div>`;
+    return;
+  }
 
   if (lon) pd += 2;
 
-  texto += `PD mínimo: ${pd} h\nFin PD: ${new Date(endDate.getTime() + pd * 3600000).toLocaleString('es-CL')}\n`;
+  const endPdUtc = new Date(endUtc.getTime() + pd * 3600000);
+  texto += `PD mínimo: ${pd} h\nFin PD UTC: ${formatUtc(endPdUtc)}\n`;
+  texto += `Fin PD local origen (${CITIES[fromCity].name}): ${formatInTimeZone(endPdUtc, CITIES[fromCity].timeZone)}\n`;
+  texto += `Fin PD local destino (${CITIES[toCity].name}): ${formatInTimeZone(endPdUtc, CITIES[toCity].timeZone)}\n`;
   if (pd === 10) texto += 'Nota traslados.\n';
   if (lon) texto += 'Nota longitud.\n';
 
   document.getElementById('resC').innerHTML = `<div class="${msgClass}">${texto}</div>`;
 }
+
+initializeCitySelectors();
 </script>
 
 </body>
